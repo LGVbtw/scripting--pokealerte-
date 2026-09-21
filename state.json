@@ -1,14 +1,14 @@
 {
   "guizette-family-etb": {
-    "available": true,
-    "checked_at": "2026-09-21T08:00:53.075307+00:00"
+    "available": false,
+    "checked_at": "2026-09-21T08:15:25.728359+00:00"
   },
   "golden-poke-etb": {
-    "available": true,
-    "checked_at": "2026-09-21T08:00:54.782038+00:00"
+    "available": false,
+    "checked_at": "2026-09-21T08:15:27.172805+00:00"
   },
   "hikaru-distribution-etb": {
-    "available": true,
-    "checked_at": "2026-09-21T08:00:55.232060+00:00"
+    "available": false,
+    "checked_at": "2026-09-21T08:15:27.644663+00:00"
   }
 }
