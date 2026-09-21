@@ -8,6 +8,7 @@ GitHub Actions workflow between runs).
 
 import json
 import os
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -63,9 +64,41 @@ def save_state(state: dict) -> None:
     STATE_FILE.write_text(json.dumps(state, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
-def is_available(html: str, keywords: list[str]) -> bool:
+PRODUCT_CLASS_RE = re.compile(r'class="([^"]*\btype-product\b[^"]*)"')
+
+
+def woocommerce_stock(html: str) -> bool | None:
+    # First type-product element is the main product; later ones are related-product cards.
+    match = PRODUCT_CLASS_RE.search(html)
+    if not match:
+        return None
+    classes = match.group(1).split()
+    if "outofstock" in classes:
+        return False
+    if "instock" in classes or "onbackorder" in classes:
+        return True
+    return None
+
+
+SHOPIFY_AVAILABLE_RE = re.compile(r'"available":(true|false),"price_varies"')
+
+
+def shopify_stock(html: str) -> bool | None:
+    values = SHOPIFY_AVAILABLE_RE.findall(html)
+    if not values:
+        return None
+    return "true" in values
+
+
+def is_available(html: str, keywords: list[str]) -> tuple[bool, str]:
+    woo = woocommerce_stock(html)
+    if woo is not None:
+        return woo, "woocommerce-class"
+    shopify = shopify_stock(html)
+    if shopify is not None:
+        return shopify, "shopify-json"
     lowered = html.lower()
-    return any(kw.lower() in lowered for kw in keywords)
+    return any(kw.lower() in lowered for kw in keywords), "keywords"
 
 
 def send_discord_alert(product_name: str, url: str) -> None:
@@ -99,7 +132,7 @@ def check_product(key: str, product: dict, state: dict) -> None:
         print(f"[{key}] request failed: {exc}", file=sys.stderr)
         return
 
-    available_now = is_available(resp.text, keywords)
+    available_now, source = is_available(resp.text, keywords)
     seen_before = key in state
     was_available = state.get(key, {}).get("available", False)
 
@@ -112,7 +145,7 @@ def check_product(key: str, product: dict, state: dict) -> None:
             # keep previous state so we retry alerting on next run
             return
     else:
-        print(f"[{key}] available={available_now} (was={was_available}, first_check={not seen_before})")
+        print(f"[{key}] available={available_now} via {source} (was={was_available}, first_check={not seen_before})")
 
     state[key] = {
         "available": available_now,
