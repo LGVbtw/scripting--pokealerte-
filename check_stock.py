@@ -147,10 +147,11 @@ def check_product(key: str, product: dict, state: dict) -> None:
     else:
         print(f"[{key}] available={available_now} via {source} (was={was_available}, first_check={not seen_before})")
 
-    state[key] = {
-        "available": available_now,
-        "checked_at": datetime.now(timezone.utc).isoformat(),
-    }
+    if not seen_before or available_now != was_available:
+        state[key] = {
+            "available": available_now,
+            "checked_at": datetime.now(timezone.utc).isoformat(),
+        }
 
 
 def main() -> None:
